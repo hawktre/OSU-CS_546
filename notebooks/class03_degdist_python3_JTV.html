@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.13">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>CSX46 Class Notebook 3 - Degree Distribution</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="class03_degdist_python3_JTV_files/libs/clipboard/clipboard.min.js"></script>
+<script src="class03_degdist_python3_JTV_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="class03_degdist_python3_JTV_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="class03_degdist_python3_JTV_files/libs/quarto-html/popper.min.js"></script>
+<script src="class03_degdist_python3_JTV_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="class03_degdist_python3_JTV_files/libs/quarto-html/anchor.min.js"></script>
+<link href="class03_degdist_python3_JTV_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="class03_degdist_python3_JTV_files/libs/quarto-html/quarto-syntax-highlighting-66ab7fd5e73b7f0a764e0d49b3e29ab1.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="class03_degdist_python3_JTV_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="class03_degdist_python3_JTV_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="class03_degdist_python3_JTV_files/libs/bootstrap/bootstrap-c0367b04c37547644fece4185067e4a7.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">CSX46 Class Notebook 3 - Degree Distribution</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>In this class session we are going to plot the degree distribution of the undirected human protein-protein interaction network (PPI). We will do this without using <code>igraph</code>, although as we will learn, <code>igraph</code> does have a function for fitting a power law to the empirical degree distribution of a network. We’ll obtain the interaction data from the Pathway Commons SIF file (see Class Session 1 notebook) and we’ll manually compute the degree of each vertex (protein) in the network. We’ll then compute the count <em>N(k)</em> of vertices that have a given vertex degree <em>k</em>, for all <em>k</em> values. Finally, we’ll plot the degree distribution and discuss whether it is consistent with the results obtained in the Jeong <em>et al.</em> article for the yeast PPI.</p>
+<p>We’ll start by loading all of the Python modules that we will need for this notebook. Because we’ll be calling a bunch of functions from <code>numpy</code> and <code>matplotlib.pyplot</code>, we’ll alias these packages as <code>np</code> and <code>plt</code>, respectively.</p>
+<div id="cell-3" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274286321,&quot;user_tz&quot;:480,&quot;elapsed&quot;:377,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-execution_count="3">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We are also going to need igraph</p>
+<div id="cell-5" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274292433,&quot;user_tz&quot;:480,&quot;elapsed&quot;:6110,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="7e97a001-9b76-4fb7-815c-c3edaaefacda" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">!</span>pip install python<span class="op">-</span>igraph</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Collecting python-igraph
+  Downloading python_igraph-1.0.0-py3-none-any.whl.metadata (3.1 kB)
+Collecting igraph==1.0.0 (from python-igraph)
+  Downloading igraph-1.0.0-cp39-abi3-manylinux_2_28_x86_64.whl.metadata (4.4 kB)
+Collecting texttable&gt;=1.6.2 (from igraph==1.0.0-&gt;python-igraph)
+  Downloading texttable-1.7.0-py2.py3-none-any.whl.metadata (9.8 kB)
+Downloading python_igraph-1.0.0-py3-none-any.whl (9.2 kB)
+Downloading igraph-1.0.0-cp39-abi3-manylinux_2_28_x86_64.whl (5.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.7/5.7 MB 48.8 MB/s eta 0:00:00
+Downloading texttable-1.7.0-py2.py3-none-any.whl (10 kB)
+Installing collected packages: texttable, igraph, python-igraph
+Successfully installed igraph-1.0.0 python-igraph-1.0.0 texttable-1.7.0</code></pre>
+</div>
+</div>
+<div id="cell-6" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274292443,&quot;user_tz&quot;:480,&quot;elapsed&quot;:11,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-execution_count="5">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> igraph <span class="im">as</span> ig</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Download the Pathway Commons 2 SIF file and uncompress it (see Part 2 of the notebook from Class Session 1)</p>
+<div id="cell-8" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274294531,&quot;user_tz&quot;:480,&quot;elapsed&quot;:2079,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="af4bf54d-a373-43be-a07d-0cdd1889c90a" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="op">!</span>wget https:<span class="op">//</span>csx46.s3<span class="op">-</span>us<span class="op">-</span>west<span class="op">-</span><span class="fl">2.</span><span class="er">amazonaws</span>.com<span class="op">/</span>PathwayCommons9.All.hgnc.sif.gz</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="op">!</span>gunzip <span class="op">-</span>f PathwayCommons9.All.hgnc.sif.gz</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>--2026-01-13 03:18:12--  https://csx46.s3-us-west-2.amazonaws.com/PathwayCommons9.All.hgnc.sif.gz
+Resolving csx46.s3-us-west-2.amazonaws.com (csx46.s3-us-west-2.amazonaws.com)... 3.5.77.24, 3.5.77.158, 3.5.85.117, ...
+Connecting to csx46.s3-us-west-2.amazonaws.com (csx46.s3-us-west-2.amazonaws.com)|3.5.77.24|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 6072823 (5.8M) [binary/octet-stream]
+Saving to: ‘PathwayCommons9.All.hgnc.sif.gz’
+
+PathwayCommons9.All 100%[===================&gt;]   5.79M  9.26MB/s    in 0.6s    
+
+2026-01-13 03:18:13 (9.26 MB/s) - ‘PathwayCommons9.All.hgnc.sif.gz’ saved [6072823/6072823]
+</code></pre>
+</div>
+</div>
+<p>Load in the SIF file as a <code>pandas</code> data frame using <code>pandas.read_csv</code>. Make sure the column names of your data frame are <code>species1</code>, <code>interaction_type</code>, and <code>species2</code>. Save the data frame as the object <code>sif_data</code>.</p>
+<div id="cell-10" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274296095,&quot;user_tz&quot;:480,&quot;elapsed&quot;:1563,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="175e490f-6cf8-4a97-cead-70e16ed91f1e" data-execution_count="7">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> csv</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>sif_data <span class="op">=</span> pd.read_csv(<span class="st">"PathwayCommons9.All.hgnc.sif"</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>                     sep<span class="op">=</span><span class="st">"</span><span class="ch">\t</span><span class="st">"</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>                     quoting<span class="op">=</span>csv.QUOTE_NONE,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>                     names<span class="op">=</span>[<span class="st">"species1"</span>, <span class="st">"interaction_type"</span>, <span class="st">"species2"</span>])</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>sif_data.columns</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="7">
+<pre><code>Index(['species1', 'interaction_type', 'species2'], dtype='object')</code></pre>
+</div>
+</div>
+<p>Step 2: restrict the interactions to protein-protein undirected (“in-complex-with”, “interacts-with”). The restricted data frame should be called <code>interac_ppi</code>. Then we will make a copy using <code>copy</code> so <code>interac_ppi</code> is independent of <code>sif_data</code> which will be convenient for this exercise.</p>
+<div id="cell-13" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274296261,&quot;user_tz&quot;:480,&quot;elapsed&quot;:166,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-execution_count="8">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>interaction_types_ppi <span class="op">=</span> <span class="bu">set</span>([<span class="st">"interacts-with"</span>,</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>                             <span class="st">"in-complex-with"</span>])</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>interac_ppi <span class="op">=</span> sif_data[sif_data.interaction_type.isin(interaction_types_ppi)].copy()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Step 3: for each interaction, reorder <code>species1</code> and <code>species2</code> (if necessary) so that <code>species1 &lt; species2</code> (in terms of the species names, in lexicographic order). You can make a boolean vector <code>boolean_vec</code> containing (for each row of the data frame <code>interac_ppi</code>) <code>True</code> if <code>species2 &gt; species1</code> (by <a href="https://stackoverflow.com/questions/45950646/what-is-lexicographical-order">lexicographic order</a>) for that row, or <code>False</code> otherwise. You can then use the <code>loc</code> method on the data frame, to select rows based on <code>boolean_vec</code> and the two columns that you want (<code>species1</code> and <code>species2</code>). [Thanks to Garrett Bauer for suggesting this approach, which is more elegant than looping over all rows]:</p>
+<div id="cell-15" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274296573,&quot;user_tz&quot;:480,&quot;elapsed&quot;:311,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-execution_count="9">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>boolean_vec <span class="op">=</span> interac_ppi[<span class="st">'species1'</span>] <span class="op">&gt;</span> interac_ppi[<span class="st">'species2'</span>]</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>interac_ppi.loc[boolean_vec, [<span class="st">'species1'</span>, <span class="st">'species2'</span>]] <span class="op">=</span> interac_ppi.loc[boolean_vec, [<span class="st">'species2'</span>, <span class="st">'species1'</span>]].values</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Since <code>for</code> loops are reasonably fast in Python (at least, compared to in R), you could also do this using a <code>for</code> loop through all of the rows of the data frame, swapping <code>species1</code> and <code>species2</code> entries as needed (and in-place in the data frame) so that in the resulting data frame <code>interac_ppi</code> satisfies <code>species1 &lt; species2</code> for all rows.</p>
+<div id="cell-17" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274296591,&quot;user_tz&quot;:480,&quot;elapsed&quot;:8,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-execution_count="10">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> rowid, row <span class="kw">in</span> interac_ppi.head().iterrows():</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> row[<span class="st">'species1'</span>] <span class="op">&gt;</span> row[<span class="st">'species2'</span>]:</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>        interac_ppi[<span class="st">'species1'</span>][rowid] <span class="op">=</span> row[<span class="st">'species2'</span>]</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>        interac_ppi[<span class="st">'species2'</span>][rowid] <span class="op">=</span> row[<span class="st">'species1'</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Step 4: Restrict the data frame to only include the columns <code>species1</code> and <code>species2</code>. Use the <code>pandas.DataFrame.drop_duplicates</code> method to subset the rows of the resulting two-column data frame to only unique rows. Assign the resulting data frame object to have the name <code>interac_ppi_unique</code>. This is basically selecting only unique pairs of proteins, regardless of interaction type.</p>
+<div id="cell-19" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274296862,&quot;user_tz&quot;:480,&quot;elapsed&quot;:269,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-execution_count="11">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>interac_ppi_unique <span class="op">=</span> interac_ppi.loc[:,[<span class="st">'species1'</span>, <span class="st">'species2'</span>]].drop_duplicates()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Step 5: compute the degree of each vertex (though we will not associate the vertex degrees with vertex names here, since for this exercise we only need the vector of vertex degree values, not the associated vertex IDs). You’ll want to create an object called <code>vertex_degrees_ctr</code> which is of class <code>collections.Counter</code>. You’ll want to name the final list of vertex degrees, <code>vertex_degrees</code>.</p>
+<div id="cell-21" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274297238,&quot;user_tz&quot;:480,&quot;elapsed&quot;:374,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-execution_count="12">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> collections</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>allproteins <span class="op">=</span> interac_ppi_unique[<span class="st">"species1"</span>].tolist() <span class="op">+</span> interac_ppi_unique[<span class="st">"species2"</span>].tolist()</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>vertex_degrees_ctr <span class="op">=</span> collections.Counter(allproteins)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>vertex_degrees <span class="op">=</span> <span class="bu">list</span>(vertex_degrees_ctr.values())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Let’s print out the vertex degrees of the first 10 vertices, in whatever the key order is. Pythonistas – anyone know of a less convoluted way to do this? (I did it by wrapping a <code>dict</code> around <code>vertex_degrees_ctr</code>, and then calling the <code>items</code> method, and then passing that to a list and then subsetting the list to the first 10 elements, and then finally wrapping another <code>dict</code> around that list).</p>
+<div id="cell-23" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274297280,&quot;user_tz&quot;:480,&quot;elapsed&quot;:43,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="77685fd6-1992-4e6c-9cf1-00a8f0d3dbc4" data-execution_count="13">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="bu">dict</span>(<span class="bu">list</span>(<span class="bu">dict</span>(vertex_degrees_ctr).items())[<span class="dv">0</span>:<span class="dv">9</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="13">
+<pre><code>{'A1BG': 59,
+ 'A1CF': 34,
+ 'A2M': 171,
+ 'A2ML1': 4,
+ 'A4GALT': 6,
+ 'A4GNT': 19,
+ 'AAAS': 72,
+ 'AACS': 6,
+ 'AADAC': 2}</code></pre>
+</div>
+</div>
+<p>Let’s print out the first ten entries of the <code>vertex_degrees</code> list. Note that we don’t expect it to be in the same order as the output from the previous command above, since <code>dict</code> changes the order in the above.</p>
+<div id="cell-25" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274297303,&quot;user_tz&quot;:480,&quot;elapsed&quot;:15,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="8af5529e-10ff-43e5-8428-eb383036afe8" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(vertex_degrees[<span class="dv">0</span>:<span class="dv">9</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[59, 34, 171, 4, 6, 19, 72, 6, 2]</code></pre>
+</div>
+</div>
+<p>Step 6: Calculate the histogram of <em>N(k)</em> vs.&nbsp;<em>k</em>, using 30 bins, using <code>plt.hist</code>. You’ll probably want to start by making a <code>numpy.array</code> from your <code>vertex_degrees</code>. Name the resulting object from calling <code>plt.hist</code>, <code>hist_res</code>. Obtain a numpy array of the bin counts as element zero from <code>hist_res</code> (name this object <code>hist_counts</code>) and obtain a numpy array of the bin centers (which are <em>k</em> values) as element one from <code>hist_res</code> (name this object <code>hist_breaks</code>). Finally, you want the <em>k</em> values of the centers of the bins, not the breakpoint values. So you’ll have to do some arithmetic to go from the 31 <em>k</em> values of the bin breakpoints, to a numpy array of the 30 <em>k</em> values of the centers of the bins. You should call that object <code>kvals</code>.</p>
+<div id="cell-27" class="cell" data-scrolled="true" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274297988,&quot;user_tz&quot;:480,&quot;elapsed&quot;:642,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="ae917340-234a-4f7c-f177-7c54c3058552" data-execution_count="15">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>nbins <span class="op">=</span> <span class="dv">30</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>hist_res <span class="op">=</span> plt.hist(np.array(vertex_degrees), bins<span class="op">=</span> nbins)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>hist_counts <span class="op">=</span> hist_res[<span class="dv">0</span>]</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>hist_breaks <span class="op">=</span> hist_res[<span class="dv">1</span>]</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>kvals <span class="op">=</span> <span class="fl">0.5</span><span class="op">*</span>(hist_breaks[<span class="dv">0</span>:(nbins)] <span class="op">+</span> hist_breaks[<span class="dv">1</span>:(nbins<span class="op">+</span><span class="dv">1</span>)])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="class03_degdist_python3_JTV_files/figure-html/cell-15-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Let’s print the <em>k</em> values of the bin centers:</p>
+<div id="cell-29" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274297995,&quot;user_tz&quot;:480,&quot;elapsed&quot;:3,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="09d9c165-781c-44b4-d653-021a27a0f281" data-execution_count="16">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(kvals)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[  39.48333333  116.45        193.41666667  270.38333333  347.35
+  424.31666667  501.28333333  578.25        655.21666667  732.18333333
+  809.15        886.11666667  963.08333333 1040.05       1117.01666667
+ 1193.98333333 1270.95       1347.91666667 1424.88333333 1501.85
+ 1578.81666667 1655.78333333 1732.75       1809.71666667 1886.68333333
+ 1963.65       2040.61666667 2117.58333333 2194.55       2271.51666667]</code></pre>
+</div>
+</div>
+<p>Let’s print the histogram bin counts:</p>
+<div id="cell-31" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274298015,&quot;user_tz&quot;:480,&quot;elapsed&quot;:19,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="c9f03b49-1443-4990-daa9-746b5436fd86" data-execution_count="17">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(hist_counts)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1.3975e+04 2.0580e+03 7.0200e+02 3.6300e+02 1.8000e+02 1.0200e+02
+ 4.5000e+01 5.9000e+01 1.3000e+01 8.0000e+00 8.0000e+00 1.0000e+00
+ 1.0000e+00 5.0000e+00 2.0000e+00 2.0000e+00 1.0000e+00 0.0000e+00
+ 0.0000e+00 1.0000e+00 1.0000e+00 1.0000e+00 1.0000e+00 0.0000e+00
+ 1.0000e+00 0.0000e+00 0.0000e+00 0.0000e+00 0.0000e+00 1.0000e+00]</code></pre>
+</div>
+</div>
+<p>Step 7: Plot <code>N(k)</code> vs.&nbsp;<code>k</code>, on log-log scale (using only the first 14 points, which is plenty sufficient to see the approximatey scale-free degree distribution and where it becomes exponentially suppressed at high <code>k</code>. For this you’ll use <code>plt.loglog</code>. You’ll probably want to adjust the x-axis limits using <code>plt.gca().set_xlim()</code>. To see the plot, you’ll have to do <code>plt.show()</code>.</p>
+<div id="cell-33" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274299078,&quot;user_tz&quot;:480,&quot;elapsed&quot;:1058,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="4cb393bd-25d3-4480-dc7a-35b3e129bdbd" data-execution_count="18">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>inds <span class="op">=</span> np.where(hist_counts <span class="op">&gt;</span> <span class="dv">0</span>)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>plt.loglog(kvals[inds], hist_counts[inds], <span class="st">"o"</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>plt.xlabel(<span class="st">"K"</span>)</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="st">"N(K)"</span>)</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>plt.gca().set_xlim([<span class="dv">50</span>, <span class="dv">2000</span>])</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="class03_degdist_python3_JTV_files/figure-html/cell-18-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Step 8: Do a linear fit to the log10(N(k)) vs.&nbsp;log10(k) data (just over the bins where the count is nonzero). You’ll want to use <code>scipy.stats.linregress</code> to do the linear regression. Don’t forget to log10-transform the data using <code>np.log10</code>.</p>
+<div id="cell-35" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274300723,&quot;user_tz&quot;:480,&quot;elapsed&quot;:1644,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="de963f92-38bd-4f66-f6b1-e1bf31803512" data-execution_count="19">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> scipy</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>fit <span class="op">=</span> scipy.stats.linregress(np.log10(kvals[inds]), np.log10(hist_counts[inds]))</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(fit)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>LinregressResult(slope=np.float64(-2.8404237326119177), intercept=np.float64(9.1344087210706), rvalue=np.float64(-0.9669930870015452), pvalue=np.float64(6.014754458564446e-14), stderr=np.float64(0.16332549645288855), intercept_stderr=np.float64(0.46829803380434365))</code></pre>
+</div>
+</div>
+<p>Slope estimate is -2.8.</p>
+<p>Now let’s compute the slope for the degree distribution Fig. 1b in the Jeong et al.&nbsp;article, for the yeast PPI. The change in ordinate over the linear range is about -6.5 in units of natural logarithm. The change in abscissa over the linear range is approximately log(45)-log(2), so we can compute the Jeong et al.&nbsp;slope thus:</p>
+<div id="cell-37" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274300728,&quot;user_tz&quot;:480,&quot;elapsed&quot;:6,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="e7b23fcb-dfe5-443c-9361-c910987298cf" data-execution_count="20">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>jeong_slope <span class="op">=</span> <span class="op">-</span><span class="fl">6.5</span><span class="op">/</span>(np.log(<span class="dv">45</span>)<span class="op">-</span>np.log(<span class="dv">2</span>))</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="sc">%.2f</span><span class="st">"</span> <span class="op">%</span> jeong_slope)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>-2.09</code></pre>
+</div>
+</div>
+<p>How close was your slope from the human PPI, to the slope for the yeast PPI from the Jeong et al.&nbsp;article?</p>
+<p>As stated above, <code>igraph</code> has a built-in function for computing the degree distribution and another built-in function for fitting a line to the log-log degree distribution. Let’s try them out, doing the same analysis that we did above, but using the <code>igraph</code> functions.</p>
+<p>First, let’s make an <code>igraph.Graph</code> object using <code>igraph.Graph.TupleList</code> and providing the edge-list obtained from calling the <code>tolist</code> method on <code>interact_ppi_unique</code>. Make sure to specify <code>directed=False</code> when you are making the <code>igraph.Graph</code> object.</p>
+<div id="cell-41" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274370499,&quot;user_tz&quot;:480,&quot;elapsed&quot;:639,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-execution_count="25">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>g <span class="op">=</span> ig.Graph.TupleList(interac_ppi_unique.values.tolist(), directed<span class="op">=</span><span class="va">False</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>As usual, we should look at the “summary” of the graph</p>
+<div id="cell-43" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274385938,&quot;user_tz&quot;:480,&quot;elapsed&quot;:18,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="9c2a970e-c1b6-4636-e6bc-3fc038a440fc" data-execution_count="26">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>ig.Graph.summary(g)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="26">
+<pre><code>'IGRAPH UN-- 17531 475553 -- \n+ attr: name (v)'</code></pre>
+</div>
+</div>
+<p>Now call the <code>degree_distribution</code> method on the graph object, which returns an object of class <code>igraph.statistics.Histogram</code>. Now call the <code>bins</code> method on the histogram object. It returns an iterable (specifically, an object of type <code>generator</code>), and if you iterate over it using a <code>for</code> loop, it will return a tuple (containing three values) for each bin. Grab the first and third item from each tuple; those are the left <em>k</em> value of the bin and the bin count, respectively. Break them out into separate vectors (of length equal to the number of bins) <code>xs</code> and <code>ys</code>, respectively. Plot <code>ys</code> vs.&nbsp;<code>xs</code> on log-log scale using <code>matplotlib.pyplot.loglog</code>.</p>
+<div id="cell-45" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274458865,&quot;user_tz&quot;:480,&quot;elapsed&quot;:360,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="18214534-05ff-4dcf-9464-2c41ab57b58b" data-execution_count="27">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>xs, ys <span class="op">=</span> <span class="bu">zip</span>(<span class="op">*</span>[(left, count) <span class="cf">for</span> left, _, count <span class="kw">in</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>         g.degree_distribution().bins()])</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>plt.loglog(xs, ys)</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="class03_degdist_python3_JTV_files/figure-html/cell-23-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Get the degrees of all the nodes by calling the <code>degree</code> method on the <code>igraph.Graph</code> object <code>g</code>. Pass that object to <code>igraph.statistics.power_law_fit</code> and print the result.</p>
+<div id="cell-47" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274582203,&quot;user_tz&quot;:480,&quot;elapsed&quot;:76809,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="e0b732fa-9955-408d-e3ab-297ba948175d" data-execution_count="30">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>ig.statistics.power_law_fit(g.degree())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="30">
+<pre><code>FittedPowerLaw(continuous=False, alpha=3.4817712589157335, xmin=245.0, L=-4321.089453205786, D=0.049832437579329425, p=0.0)</code></pre>
+</div>
+</div>
+<section id="computing-and-plotting-the-network-degree-distribution-as-a-bash-one-liner" class="level2">
+<h2 class="anchored" data-anchor-id="computing-and-plotting-the-network-degree-distribution-as-a-bash-one-liner">Computing and plotting the network degree distribution, as a bash one-liner</h2>
+<p>First, we’ll need to install <code>gnuplot</code> and <code>imagemagick</code>, using <code>apt-get</code></p>
+<div id="cell-50" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274613190,&quot;user_tz&quot;:480,&quot;elapsed&quot;:30634,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="eddf6bad-b677-4f75-9233-dea5c186f940" data-execution_count="31">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="op">!</span> apt<span class="op">-</span>get install <span class="op">-</span>y gnuplot imagemagick <span class="op">&gt;/</span>dev<span class="op">/</span>null</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Extracting templates from packages: 100%</code></pre>
+</div>
+</div>
+<p>OK, here is how to do it in a single bash command:</p>
+<div id="cell-52" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274617957,&quot;user_tz&quot;:480,&quot;elapsed&quot;:2143,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-execution_count="32">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="op">!</span> egrep $<span class="st">'</span><span class="ch">\t</span><span class="st">interacts-with</span><span class="ch">\t</span><span class="st">|</span><span class="ch">\t</span><span class="st">in-complex-with</span><span class="ch">\t</span><span class="st">'</span> PathwayCommons9.All.hgnc.sif  <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a> cut <span class="op">-</span>f1,<span class="dv">3</span> <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a> sed <span class="st">'s/</span><span class="ch">\t</span><span class="st">/</span><span class="ch">\n</span><span class="st">/g'</span> <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a> sort <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a> uniq <span class="op">-</span>c <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a> sort <span class="op">-</span>k1nr <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a> sed <span class="st">'s/^\s*//g'</span> <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a> cut <span class="op">-</span>f1 <span class="op">-</span>d\  <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a> awk <span class="st">'{print int(int($1)/100)}'</span> <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a> sort <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a> uniq <span class="op">-</span>c <span class="op">|</span> <span class="op">\</span></span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a> awk <span class="st">'BEGIN { print "set term png</span><span class="ch">\n</span><span class="st">set out</span><span class="ch">\n</span><span class="st">plot '</span>\<span class="st">''</span><span class="op">&lt;</span>cat<span class="st">'</span><span class="ch">\'</span><span class="st">'"} { print $2 "</span>\t<span class="st">" log($1)/log(10)}' | </span><span class="ch">\</span></span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a><span class="st"> gnuplot -p &gt; degdist.png</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The following code is necessary to display a PNG image in Google Colab (in Jupyter, the PNG binary stream can be piped directly to the built-in shell function <code>display</code>, so python code is not needed if we were doing this in Jupyter).</p>
+<div id="cell-54" class="cell" data-executioninfo="{&quot;status&quot;:&quot;ok&quot;,&quot;timestamp&quot;:1768274620901,&quot;user_tz&quot;:480,&quot;elapsed&quot;:22,&quot;user&quot;:{&quot;displayName&quot;:&quot;Trent VanHawkins&quot;,&quot;userId&quot;:&quot;03240593052724796268&quot;}}" data-outputid="a6b1dc39-5aec-4ab6-c356-2331bc2119f1" data-execution_count="33">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> IPython.display <span class="im">import</span> Image</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>Image(<span class="st">'degdist.png'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="33">
+<div>
+<figure class="figure">
+<p><img src="class03_degdist_python3_JTV_files/figure-html/cell-27-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
